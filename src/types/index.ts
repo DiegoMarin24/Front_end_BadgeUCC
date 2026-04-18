@@ -27,6 +27,38 @@ export interface Estudiante {
   correoInstitucional: string
   programa?: { id: string; nombre: string }
   insigniasObtenidas?: InsigniaEstudiante[]
+  actividadesRealizadas?: ActividadRealizada[]
+  cumplimientoRequisitos?: CumplimientoRequisito[]
+}
+
+export interface ActividadRealizada {
+  id: string
+  actividadId: string
+  fechaRegistro: string
+  registradoPor: string
+  urlCertificado?: string
+  puntosObtenidos: number
+  observaciones?: string
+  actividad: {
+    id: string
+    nombre: string
+    puntos: number
+  }
+}
+
+export interface CumplimientoRequisito {
+  id: string
+  requisitoId: string
+  aprobado: boolean
+  fechaAprobacion?: string
+  aprobadoPor?: string
+  observaciones?: string
+  requisito: {
+    id: string
+    descripcion: string
+    tipo: string
+    esObligatorio: boolean
+  }
 }
 
 export interface Insignia {
