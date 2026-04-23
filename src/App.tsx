@@ -6,6 +6,7 @@ import EstudiantesList from './pages/estudiantes/EstudiantesList'
 import EstudianteForm from './pages/estudiantes/EstudianteForm'
 import EstudianteDetail from './pages/estudiantes/EstudianteDetail'
 import ActividadesList from './pages/actividades/ActividadesList'
+import InsigniasList from './pages/insignias/InsigniasList'
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/dashboard/estudiantes/:id" element={<EstudianteDetail />} />
           <Route path="/dashboard/estudiantes/:id/editar" element={<EstudianteForm />} />
           <Route path="/dashboard/actividades" element={<ActividadesList />} />
+          <Route path="/dashboard/insignias" element={<InsigniasList />} />
         </Route>
       </Routes>
     </BrowserRouter>
