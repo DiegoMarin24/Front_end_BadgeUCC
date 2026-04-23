@@ -1,24 +1,21 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getEstudiantesApi } from '../../api/estudiantes.api'
 import { getCatalogoApi, registrarActividadApi, eliminarActividadApi, getActividadesEstudianteApi } from '../../api/actividades.api'
 import { useAuthStore } from '../../store/authStore'
+import BuscadorEstudiantes from '../../components/ui/BuscadorEstudiantes'
 
 export default function ActividadesList() {
   const queryClient = useQueryClient()
   const usuario = useAuthStore((s) => s.usuario)
 
-  const [estudianteSeleccionado, setEstudianteSeleccionado] = useState('')
+  const [estudianteSeleccionado, setEstudianteSeleccionado] = useState<any>(null)
   const [actividadSeleccionada, setActividadSeleccionada] = useState('')
   const [urlCertificado, setUrlCertificado] = useState('')
   const [observaciones, setObservaciones] = useState('')
   const [error, setError] = useState('')
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
 
-  const { data: estudiantes = [] } = useQuery({
-    queryKey: ['estudiantes'],
-    queryFn: getEstudiantesApi,
-  })
+  const estudianteId = estudianteSeleccionado?.id ?? ''
 
   const { data: catalogo = [] } = useQuery({
     queryKey: ['catalogo'],
@@ -26,9 +23,9 @@ export default function ActividadesList() {
   })
 
   const { data: actividades = [] } = useQuery({
-    queryKey: ['actividades-estudiante', estudianteSeleccionado],
-    queryFn: () => getActividadesEstudianteApi(estudianteSeleccionado),
-    enabled: Boolean(estudianteSeleccionado),
+    queryKey: ['actividades-estudiante', estudianteId],
+    queryFn: () => getActividadesEstudianteApi(estudianteId),
+    enabled: Boolean(estudianteId),
   })
 
   const actividadElegida = catalogo.find((a: any) => a.id === actividadSeleccionada)
@@ -36,7 +33,7 @@ export default function ActividadesList() {
   const registrarMutation = useMutation({
     mutationFn: registrarActividadApi,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['actividades-estudiante', estudianteSeleccionado] })
+      queryClient.invalidateQueries({ queryKey: ['actividades-estudiante', estudianteId] })
       queryClient.invalidateQueries({ queryKey: ['estudiantes'] })
       setActividadSeleccionada('')
       setUrlCertificado('')
@@ -52,19 +49,19 @@ export default function ActividadesList() {
   const eliminarMutation = useMutation({
     mutationFn: eliminarActividadApi,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['actividades-estudiante', estudianteSeleccionado] })
+      queryClient.invalidateQueries({ queryKey: ['actividades-estudiante', estudianteId] })
       queryClient.invalidateQueries({ queryKey: ['estudiantes'] })
     },
   })
 
   const handleRegistrar = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!estudianteSeleccionado || !actividadSeleccionada) {
+    if (!estudianteId || !actividadSeleccionada) {
       setError('Selecciona un estudiante y una actividad')
       return
     }
     registrarMutation.mutate({
-      estudianteId: estudianteSeleccionado,
+      estudianteId,
       actividadId: actividadSeleccionada,
       puntosObtenidos: actividadElegida?.puntos ?? 0,
       registradoPor: usuario?.nombre ?? 'Coordinador',
@@ -73,7 +70,6 @@ export default function ActividadesList() {
     })
   }
 
-  const estudianteInfo = estudiantes.find((e: any) => e.id === estudianteSeleccionado)
   const totalPuntos = actividades.reduce((acc: number, a: any) => acc + a.puntosObtenidos, 0)
 
   return (
@@ -83,7 +79,7 @@ export default function ActividadesList() {
           <h1 className="text-2xl font-semibold text-slate-800">Actividades</h1>
           <p className="text-slate-500 mt-1 text-sm">Registro de actividades de la Ruta Global</p>
         </div>
-        {estudianteSeleccionado && (
+        {estudianteId && (
           <button
             onClick={() => setMostrarFormulario(true)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition"
@@ -98,31 +94,23 @@ export default function ActividadesList() {
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
         <label className="block text-sm font-medium text-slate-600 mb-2">
-          Seleccionar estudiante
+          Buscar estudiante
         </label>
-        <select
-          value={estudianteSeleccionado}
-          onChange={(e) => setEstudianteSeleccionado(e.target.value)}
-          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-        >
-          <option value="">Seleccionar estudiante...</option>
-          {estudiantes.map((e: any) => (
-            <option key={e.id} value={e.id}>
-              {e.primerNombre} {e.primerApellido} — {e.idEstudiante}
-            </option>
-          ))}
-        </select>
+        <BuscadorEstudiantes
+          onSeleccionar={setEstudianteSeleccionado}
+          estudianteSeleccionado={estudianteSeleccionado}
+        />
       </div>
 
-      {estudianteSeleccionado && (
+      {estudianteId && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-2xl border border-slate-200 p-5">
               <p className="text-xs text-slate-400 mb-1">Estudiante</p>
               <p className="text-sm font-semibold text-slate-800">
-                {estudianteInfo?.primerNombre} {estudianteInfo?.primerApellido}
+                {estudianteSeleccionado?.primerNombre} {estudianteSeleccionado?.primerApellido}
               </p>
-              <p className="text-xs text-slate-400 mt-0.5">{estudianteInfo?.programa?.nombre}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{estudianteSeleccionado?.programa?.nombre}</p>
             </div>
             <div className="bg-white rounded-2xl border border-slate-200 p-5">
               <p className="text-xs text-slate-400 mb-1">Actividades registradas</p>
@@ -160,10 +148,10 @@ export default function ActividadesList() {
                       )}
                     </div>
                     <div className="flex items-center gap-4">
-                       {act.urlCertificado
+                      {act.urlCertificado
                         ? <a href={act.urlCertificado} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Ver certificado</a>
                         : null
-                       }    
+                      }
                       <span className="bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full border border-green-100">
                         +{act.puntosObtenidos} pts
                       </span>
@@ -182,6 +170,17 @@ export default function ActividadesList() {
             )}
           </div>
         </>
+      )}
+
+      {!estudianteId && (
+        <div className="text-center py-16">
+          <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <svg className="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+          </div>
+          <p className="text-slate-400 text-sm">Busca un estudiante para registrar sus actividades</p>
+        </div>
       )}
 
       {mostrarFormulario && (

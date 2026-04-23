@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getEstudiantesApi } from '../../api/estudiantes.api'
 import {
   getInsigniasApi,
   getInsigniasEstudianteApi,
@@ -10,6 +9,7 @@ import {
   marcarRequisitoApi,
 } from '../../api/insignias.api'
 import { useAuthStore } from '../../store/authStore'
+import BuscadorEstudiantes from '../../components/ui/BuscadorEstudiantes'
 
 const nivelColor: Record<number, string> = {
   1: 'bg-blue-500',
@@ -32,12 +32,9 @@ const nivelText: Record<number, string> = {
 export default function InsigniasList() {
   const queryClient = useQueryClient()
   const usuario = useAuthStore((s) => s.usuario)
-  const [estudianteSeleccionado, setEstudianteSeleccionado] = useState('')
+  const [estudianteSeleccionado, setEstudianteSeleccionado] = useState<any>(null)
 
-  const { data: estudiantes = [] } = useQuery({
-    queryKey: ['estudiantes'],
-    queryFn: getEstudiantesApi,
-  })
+  const estudianteId = estudianteSeleccionado?.id ?? ''
 
   const { data: insignias = [] } = useQuery({
     queryKey: ['insignias'],
@@ -45,21 +42,21 @@ export default function InsigniasList() {
   })
 
   const { data: insigniasEstudiante = [] } = useQuery({
-    queryKey: ['insignias-estudiante', estudianteSeleccionado],
-    queryFn: () => getInsigniasEstudianteApi(estudianteSeleccionado),
-    enabled: Boolean(estudianteSeleccionado),
+    queryKey: ['insignias-estudiante', estudianteId],
+    queryFn: () => getInsigniasEstudianteApi(estudianteId),
+    enabled: Boolean(estudianteId),
   })
 
   const { data: requisitos = [] } = useQuery({
-    queryKey: ['requisitos-estudiante', estudianteSeleccionado],
-    queryFn: () => getRequisitosEstudianteApi(estudianteSeleccionado),
-    enabled: Boolean(estudianteSeleccionado),
+    queryKey: ['requisitos-estudiante', estudianteId],
+    queryFn: () => getRequisitosEstudianteApi(estudianteId),
+    enabled: Boolean(estudianteId),
   })
 
   const asignarMutation = useMutation({
     mutationFn: asignarInsigniaApi,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['insignias-estudiante', estudianteSeleccionado] })
+      queryClient.invalidateQueries({ queryKey: ['insignias-estudiante', estudianteId] })
       queryClient.invalidateQueries({ queryKey: ['estudiantes'] })
     },
   })
@@ -68,7 +65,7 @@ export default function InsigniasList() {
     mutationFn: ({ estudianteId, insigniaId }: { estudianteId: string; insigniaId: string }) =>
       revocarInsigniaApi(estudianteId, insigniaId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['insignias-estudiante', estudianteSeleccionado] })
+      queryClient.invalidateQueries({ queryKey: ['insignias-estudiante', estudianteId] })
       queryClient.invalidateQueries({ queryKey: ['estudiantes'] })
     },
   })
@@ -76,7 +73,7 @@ export default function InsigniasList() {
   const marcarMutation = useMutation({
     mutationFn: marcarRequisitoApi,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['requisitos-estudiante', estudianteSeleccionado] })
+      queryClient.invalidateQueries({ queryKey: ['requisitos-estudiante', estudianteId] })
     },
   })
 
@@ -85,8 +82,6 @@ export default function InsigniasList() {
 
   const getCumplimiento = (requisitoId: string) =>
     requisitos.find((r: any) => r.requisitoId === requisitoId)
-
-  const estudianteInfo = estudiantes.find((e: any) => e.id === estudianteSeleccionado)
 
   return (
     <div>
@@ -97,33 +92,27 @@ export default function InsigniasList() {
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
         <label className="block text-sm font-medium text-slate-600 mb-2">
-          Seleccionar estudiante
+          Buscar estudiante
         </label>
-        <select
-          value={estudianteSeleccionado}
-          onChange={(e) => setEstudianteSeleccionado(e.target.value)}
-          className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-        >
-          <option value="">Seleccionar estudiante...</option>
-          {estudiantes.map((e: any) => (
-            <option key={e.id} value={e.id}>
-              {e.primerNombre} {e.primerApellido} — {e.idEstudiante}
-            </option>
-          ))}
-        </select>
+        <BuscadorEstudiantes
+          onSeleccionar={setEstudianteSeleccionado}
+          estudianteSeleccionado={estudianteSeleccionado}
+        />
       </div>
 
-      {estudianteSeleccionado && (
+      {estudianteId && (
         <>
           <div className="bg-white rounded-2xl border border-slate-200 p-5 mb-6 flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-semibold text-lg">
-              {estudianteInfo?.primerNombre[0]}{estudianteInfo?.primerApellido[0]}
+              {estudianteSeleccionado?.primerNombre[0]}{estudianteSeleccionado?.primerApellido[0]}
             </div>
             <div>
               <p className="font-medium text-slate-800">
-                {estudianteInfo?.primerNombre} {estudianteInfo?.primerApellido}
+                {estudianteSeleccionado?.primerNombre} {estudianteSeleccionado?.primerApellido}
               </p>
-              <p className="text-sm text-slate-400">{estudianteInfo?.programa?.nombre} · {estudianteInfo?.idEstudiante}</p>
+              <p className="text-sm text-slate-400">
+                {estudianteSeleccionado?.programa?.nombre} · {estudianteSeleccionado?.idEstudiante}
+              </p>
             </div>
             <div className="ml-auto flex gap-2">
               {insigniasEstudiante.map((i: any) => (
@@ -172,7 +161,7 @@ export default function InsigniasList() {
                           onClick={() => {
                             if (confirm(`¿Revocar la insignia "${insignia.nombre}"?`)) {
                               revocarMutation.mutate({
-                                estudianteId: estudianteSeleccionado,
+                                estudianteId,
                                 insigniaId: insignia.id,
                               })
                             }
@@ -186,7 +175,7 @@ export default function InsigniasList() {
                           onClick={() => {
                             if (confirm(`¿Asignar la insignia "${insignia.nombre}" a este estudiante?`)) {
                               asignarMutation.mutate({
-                                estudianteId: estudianteSeleccionado,
+                                estudianteId,
                                 insigniaId: insignia.id,
                                 otorgadaPor: usuario?.nombre ?? 'Coordinador',
                               })
@@ -211,7 +200,7 @@ export default function InsigniasList() {
                             <button
                               onClick={() =>
                                 marcarMutation.mutate({
-                                  estudianteId: estudianteSeleccionado,
+                                  estudianteId,
                                   requisitoId: req.id,
                                   aprobado: !aprobado,
                                   aprobadoPor: usuario?.nombre ?? 'Coordinador',
@@ -258,14 +247,14 @@ export default function InsigniasList() {
         </>
       )}
 
-      {!estudianteSeleccionado && (
+      {!estudianteId && (
         <div className="text-center py-16">
           <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
             <svg className="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
             </svg>
           </div>
-          <p className="text-slate-400 text-sm">Selecciona un estudiante para gestionar sus insignias</p>
+          <p className="text-slate-400 text-sm">Busca un estudiante para gestionar sus insignias</p>
         </div>
       )}
     </div>
