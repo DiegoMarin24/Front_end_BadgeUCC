@@ -224,6 +224,7 @@ export default function InsigniasList() {
                               estudianteId,
                               insigniaId: insignia.id,
                               otorgadaPor: usuario?.nombre ?? 'Coordinador',
+                              urlDocumento: urlDocumento[insignia.id] || undefined,
                             })
                           }}
                           disabled={asignarMutation.isPending}

@@ -19,6 +19,7 @@ export const asignarInsigniaApi = async (payload: {
   estudianteId: string
   insigniaId: string
   otorgadaPor: string
+  urlDocumento?: string
 }) => {
   const { data } = await api.post('/insignias', payload)
   return data
