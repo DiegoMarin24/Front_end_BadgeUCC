@@ -10,12 +10,7 @@ import {
 } from '../../api/insignias.api'
 import { useAuthStore } from '../../store/authStore'
 import BuscadorEstudiantes from '../../components/ui/BuscadorEstudiantes'
-
-const nivelColor: Record<number, string> = {
-  1: 'bg-blue-500',
-  2: 'bg-amber-500',
-  3: 'bg-green-500',
-}
+import CargaArchivo from '../../components/ui/CargaArchivo'
 
 const nivelBg: Record<number, string> = {
   1: 'bg-blue-50 border-blue-100',
@@ -29,10 +24,18 @@ const nivelText: Record<number, string> = {
   3: 'text-green-700',
 }
 
+const imagenMap: Record<number, string> = {
+  1: '/insignias/pasajero-internacional.png',
+  2: '/insignias/estudiante-global.png',
+  3: '/insignias/ciudadano-mundial.png',
+}
+
 export default function InsigniasList() {
   const queryClient = useQueryClient()
   const usuario = useAuthStore((s) => s.usuario)
   const [estudianteSeleccionado, setEstudianteSeleccionado] = useState<any>(null)
+  const [urlDocumento, setUrlDocumento] = useState<Record<string, string>>({})
+  const [insigniaConDocumento, setInsigniaConDocumento] = useState<string | null>(null)
 
   const estudianteId = estudianteSeleccionado?.id ?? ''
 
@@ -58,6 +61,7 @@ export default function InsigniasList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['insignias-estudiante', estudianteId] })
       queryClient.invalidateQueries({ queryKey: ['estudiantes'] })
+      setInsigniaConDocumento(null)
     },
   })
 
@@ -83,6 +87,9 @@ export default function InsigniasList() {
   const getCumplimiento = (requisitoId: string) =>
     requisitos.find((r: any) => r.requisitoId === requisitoId)
 
+  const getInsigniaObtenida = (insigniaId: string) =>
+    insigniasEstudiante.find((i: any) => i.insigniaId === insigniaId)
+
   return (
     <div>
       <div className="mb-8">
@@ -91,9 +98,7 @@ export default function InsigniasList() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
-        <label className="block text-sm font-medium text-slate-600 mb-2">
-          Buscar estudiante
-        </label>
+        <label className="block text-sm font-medium text-slate-600 mb-2">Buscar estudiante</label>
         <BuscadorEstudiantes
           onSeleccionar={setEstudianteSeleccionado}
           estudianteSeleccionado={estudianteSeleccionado}
@@ -116,13 +121,13 @@ export default function InsigniasList() {
             </div>
             <div className="ml-auto flex gap-2">
               {insigniasEstudiante.map((i: any) => (
-                <span
+                <img
                   key={i.id}
+                  src={imagenMap[i.insignia.nivel]}
+                  alt={i.insignia.nombre}
                   title={i.insignia.nombre}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${nivelColor[i.insignia.nivel]}`}
-                >
-                  {i.insignia.nivel}
-                </span>
+                  className="w-8 h-8 rounded-full object-cover"
+                />
               ))}
             </div>
           </div>
@@ -130,20 +135,24 @@ export default function InsigniasList() {
           <div className="space-y-6">
             {insignias.map((insignia: any) => {
               const obtenida = tieneInsignia(insignia.id)
+              const insigniaObtenida = getInsigniaObtenida(insignia.id)
               const requisitosInsignia = insignia.requisitos ?? []
               const totalRequisitos = requisitosInsignia.length
               const requisitosAprobados = requisitosInsignia.filter((r: any) => {
                 const cumplimiento = getCumplimiento(r.id)
                 return cumplimiento?.aprobado
               }).length
+              const mostrandoDocumento = insigniaConDocumento === insignia.id
 
               return (
                 <div key={insignia.id} className={`bg-white rounded-2xl border p-6 ${obtenida ? nivelBg[insignia.nivel] : 'border-slate-200'}`}>
                   <div className="flex items-start justify-between mb-5">
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-semibold ${nivelColor[insignia.nivel]}`}>
-                        {insignia.nivel}
-                      </div>
+                      <img
+                        src={imagenMap[insignia.nivel]}
+                        alt={insignia.nombre}
+                        className={`w-12 h-12 rounded-full object-cover flex-shrink-0 ${obtenida ? '' : 'opacity-40 grayscale'}`}
+                      />
                       <div>
                         <h2 className={`text-base font-semibold ${obtenida ? nivelText[insignia.nivel] : 'text-slate-800'}`}>
                           {insignia.nombre}
@@ -156,31 +165,36 @@ export default function InsigniasList() {
                       <span className="text-xs text-slate-400">
                         {requisitosAprobados}/{totalRequisitos} requisitos
                       </span>
+
                       {obtenida ? (
-                        <button
-                          onClick={() => {
-                            if (confirm(`¿Revocar la insignia "${insignia.nombre}"?`)) {
-                              revocarMutation.mutate({
-                                estudianteId,
-                                insigniaId: insignia.id,
-                              })
-                            }
-                          }}
-                          className="text-xs text-red-500 hover:underline border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50 transition"
-                        >
-                          Revocar
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {insigniaObtenida?.urlDocumento && (
+                            <a
+                              href={insigniaObtenida.urlDocumento}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              Ver soporte
+                            </a>
+                          )}
+                          <button
+                            onClick={() => {
+                              if (confirm(`¿Revocar la insignia "${insignia.nombre}"?`)) {
+                                revocarMutation.mutate({ estudianteId, insigniaId: insignia.id })
+                              }
+                            }}
+                            className="text-xs text-red-500 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50 transition"
+                          >
+                            Revocar
+                          </button>
+                        </div>
                       ) : (
                         <button
-                          onClick={() => {
-                            if (confirm(`¿Asignar la insignia "${insignia.nombre}" a este estudiante?`)) {
-                              asignarMutation.mutate({
-                                estudianteId,
-                                insigniaId: insignia.id,
-                                otorgadaPor: usuario?.nombre ?? 'Coordinador',
-                              })
-                            }
-                          }}
+                          onClick={() => setInsigniaConDocumento(mostrandoDocumento ? null : insignia.id)}
                           className="text-xs text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition"
                         >
                           Asignar insignia
@@ -188,6 +202,38 @@ export default function InsigniasList() {
                       )}
                     </div>
                   </div>
+
+                  {mostrandoDocumento && !obtenida && (
+                    <div className="mb-4 p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
+                      <p className="text-xs font-medium text-slate-600">Documento de soporte para asignar la insignia</p>
+                      <CargaArchivo
+                        label="Adjuntar soporte"
+                        urlActual={urlDocumento[insignia.id]}
+                        onArchivoSubido={(url) => setUrlDocumento(prev => ({ ...prev, [insignia.id]: url }))}
+                      />
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => setInsigniaConDocumento(null)}
+                          className="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-100 transition"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={() => {
+                            asignarMutation.mutate({
+                              estudianteId,
+                              insigniaId: insignia.id,
+                              otorgadaPor: usuario?.nombre ?? 'Coordinador',
+                            })
+                          }}
+                          disabled={asignarMutation.isPending}
+                          className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-medium transition"
+                        >
+                          {asignarMutation.isPending ? 'Asignando...' : 'Confirmar asignación'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     {requisitosInsignia.map((req: any) => {
@@ -207,9 +253,7 @@ export default function InsigniasList() {
                                 })
                               }
                               className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${
-                                aprobado
-                                  ? 'bg-green-500 border-green-500'
-                                  : 'border-slate-300 hover:border-green-400'
+                                aprobado ? 'bg-green-500 border-green-500' : 'border-slate-300 hover:border-green-400'
                               }`}
                             >
                               {aprobado && (

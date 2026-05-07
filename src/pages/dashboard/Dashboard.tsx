@@ -121,22 +121,29 @@ export default function Dashboard() {
                 e.insigniasObtenidas?.some((i: any) => i.insigniaId === insignia.id)
               ).length
 
-              return (
-                <div key={insignia.id} className="flex items-center gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0
-                    ${insignia.nivel === 1 ? 'bg-blue-500' : insignia.nivel === 2 ? 'bg-amber-500' : 'bg-green-500'}`}>
-                    {insignia.nivel}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-700 truncate">{insignia.nombre}</p>
-                    <p className="text-xs text-slate-400">{insignia.requisitos?.length ?? 0} requisitos</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-lg font-semibold text-slate-800">{emitidas}</p>
-                    <p className="text-xs text-slate-400">emitidas</p>
-                  </div>
+            const imagenMap: Record<number, string> = {
+              1: '/insignias/pasajero-internacional.png',
+              2: '/insignias/estudiante-global.png',
+              3: '/insignias/ciudadano-mundial.png',
+            }
+
+            return (
+              <div key={insignia.id} className="flex items-center gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <img
+                  src={imagenMap[insignia.nivel]}
+                  alt={insignia.nombre}
+                  className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-700 truncate">{insignia.nombre}</p>
+                  <p className="text-xs text-slate-400">{insignia.requisitos?.length ?? 0} requisitos</p>
                 </div>
-              )
+                <div className="text-right flex-shrink-0">
+                  <p className="text-lg font-semibold text-slate-800">{emitidas}</p>
+                  <p className="text-xs text-slate-400">emitidas</p>
+                </div>
+              </div>
+            )
             })}
           </div>
         </div>

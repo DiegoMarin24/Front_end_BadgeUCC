@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getCatalogoApi, registrarActividadApi, eliminarActividadApi, getActividadesEstudianteApi } from '../../api/actividades.api'
 import { useAuthStore } from '../../store/authStore'
 import BuscadorEstudiantes from '../../components/ui/BuscadorEstudiantes'
+import CargaArchivo from '../../components/ui/CargaArchivo'
 
 export default function ActividadesList() {
   const queryClient = useQueryClient()
@@ -93,9 +94,7 @@ export default function ActividadesList() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
-        <label className="block text-sm font-medium text-slate-600 mb-2">
-          Buscar estudiante
-        </label>
+        <label className="block text-sm font-medium text-slate-600 mb-2">Buscar estudiante</label>
         <BuscadorEstudiantes
           onSeleccionar={setEstudianteSeleccionado}
           estudianteSeleccionado={estudianteSeleccionado}
@@ -148,10 +147,19 @@ export default function ActividadesList() {
                       )}
                     </div>
                     <div className="flex items-center gap-4">
-                      {act.urlCertificado
-                        ? <a href={act.urlCertificado} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Ver certificado</a>
-                        : null
-                      }
+                      {act.urlCertificado && (
+                        <a
+                          href={act.urlCertificado}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-lg"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Ver documento
+                        </a>
+                      )}
                       <span className="bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full border border-green-100">
                         +{act.puntosObtenidos} pts
                       </span>
@@ -184,13 +192,17 @@ export default function ActividadesList() {
       )}
 
       {mostrarFormulario && (
-        <div style={{ minHeight: '400px', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          className="fixed inset-0 z-50">
+        <div
+          style={{ background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          className="fixed inset-0 z-50"
+        >
           <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-semibold text-slate-800">Registrar actividad</h2>
-              <button onClick={() => { setMostrarFormulario(false); setError('') }}
-                className="text-slate-400 hover:text-slate-600 transition">
+              <button
+                onClick={() => { setMostrarFormulario(false); setError('') }}
+                className="text-slate-400 hover:text-slate-600 transition"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -222,18 +234,11 @@ export default function ActividadesList() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1.5">
-                  URL certificado <span className="text-slate-400 font-normal">(opcional)</span>
-                </label>
-                <input
-                  type="url"
-                  value={urlCertificado}
-                  onChange={(e) => setUrlCertificado(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                />
-              </div>
+              <CargaArchivo
+                label="Documento de soporte"
+                urlActual={urlCertificado}
+                onArchivoSubido={(url) => setUrlCertificado(url)}
+              />
 
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1.5">
