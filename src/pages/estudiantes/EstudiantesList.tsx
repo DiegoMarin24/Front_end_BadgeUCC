@@ -1,12 +1,16 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { getEstudiantesApi, eliminarEstudianteApi } from '../../api/estudiantes.api'
+import { getEstudiantesApi, eliminarEstudianteApi, exportarEstudiantesApi, importarEstudiantesApi } from '../../api/estudiantes.api'
 
 export default function EstudiantesList() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [busqueda, setBusqueda] = useState('')
+  const [importando, setImportando] = useState(false)
+  const [exportando, setExportando] = useState(false)
+  const [resultadoImport, setResultadoImport] = useState<any>(null)
+  const inputImportRef = useRef<HTMLInputElement>(null)
 
   const { data: estudiantes = [], isLoading } = useQuery({
     queryKey: ['estudiantes'],
@@ -24,37 +28,136 @@ export default function EstudiantesList() {
     }
   }
 
- const estudiantesFiltrados = estudiantes.filter((e) => {
-  const texto = busqueda.toLowerCase()
-  return (
-    e.primerNombre.toLowerCase().includes(texto) ||
-    e.primerApellido.toLowerCase().includes(texto) ||
-    e.idEstudiante.toLowerCase().includes(texto) ||
-    e.correoInstitucional.toLowerCase().includes(texto) ||
-    e.nroDocumento.toLowerCase().includes(texto) ||
-    (e.segundoNombre ?? '').toLowerCase().includes(texto) ||
-    (e.segundoApellido ?? '').toLowerCase().includes(texto)
-  )
-})
+  const handleExportar = async () => {
+    setExportando(true)
+    try {
+      await exportarEstudiantesApi()
+    } catch (err) {
+      alert('Error al exportar el archivo')
+    } finally {
+      setExportando(false)
+    }
+  }
 
+  const handleImportar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const archivo = e.target.files?.[0]
+    if (!archivo) return
+    setImportando(true)
+    setResultadoImport(null)
+    try {
+      const resultado = await importarEstudiantesApi(archivo)
+      setResultadoImport(resultado)
+      queryClient.invalidateQueries({ queryKey: ['estudiantes'] })
+    } catch (err) {
+      alert('Error al importar el archivo')
+    } finally {
+      setImportando(false)
+      if (inputImportRef.current) inputImportRef.current.value = ''
+    }
+  }
+
+  const estudiantesFiltrados = estudiantes.filter((e) => {
+    const texto = busqueda.toLowerCase()
+    return (
+      e.primerNombre.toLowerCase().includes(texto) ||
+      e.primerApellido.toLowerCase().includes(texto) ||
+      e.idEstudiante.toLowerCase().includes(texto) ||
+      e.correoInstitucional.toLowerCase().includes(texto) ||
+      e.nroDocumento.toLowerCase().includes(texto) ||
+      (e.segundoNombre ?? '').toLowerCase().includes(texto) ||
+      (e.segundoApellido ?? '').toLowerCase().includes(texto)
+    )
+  })
 
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-semibold text-slate-800">Estudiantes</h1>
-          <p className="text-slate-500 mt-1 text-sm">Gestión de estudiantes registrados</p>
+          <p className="text-slate-500 mt-1 text-sm">
+            Gestión de estudiantes registrados — {estudiantes.length} en total
+          </p>
         </div>
-        <button
-          onClick={() => navigate('/dashboard/estudiantes/nuevo')}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nuevo estudiante
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportar}
+            disabled={exportando || estudiantes.length === 0}
+            className="flex items-center gap-2 border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-600 text-sm font-medium px-4 py-2.5 rounded-lg transition"
+          >
+            {exportando ? (
+              <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            )}
+            {exportando ? 'Exportando...' : 'Exportar Excel'}
+          </button>
+
+          <button
+            onClick={() => inputImportRef.current?.click()}
+            disabled={importando}
+            className="flex items-center gap-2 border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-600 text-sm font-medium px-4 py-2.5 rounded-lg transition"
+          >
+            {importando ? (
+              <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
+              </svg>
+            )}
+            {importando ? 'Importando...' : 'Importar Excel'}
+          </button>
+          <input
+            ref={inputImportRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleImportar}
+            className="hidden"
+          />
+
+          <button
+            onClick={() => navigate('/dashboard/estudiantes/nuevo')}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nuevo estudiante
+          </button>
+        </div>
       </div>
+
+      {resultadoImport && (
+        <div className={`mb-6 p-4 rounded-2xl border ${resultadoImport.errores > 0 ? 'bg-amber-50 border-amber-100' : 'bg-green-50 border-green-100'}`}>
+          <div className="flex items-start justify-between">
+            <div>
+              <p className={`text-sm font-semibold ${resultadoImport.errores > 0 ? 'text-amber-700' : 'text-green-700'}`}>
+                Importación completada
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                ✅ {resultadoImport.exitosos} estudiantes importados correctamente
+                {resultadoImport.errores > 0 && ` · ⚠️ ${resultadoImport.errores} con errores`}
+              </p>
+              {resultadoImport.detalles?.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {resultadoImport.detalles.map((d: string, i: number) => (
+                    <p key={i} className="text-xs text-amber-600">• {d}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setResultadoImport(null)}
+              className="text-slate-400 hover:text-slate-600 transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200">
         <div className="p-4 border-b border-slate-100">
@@ -97,6 +200,7 @@ export default function EstudiantesList() {
                   <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-6 py-3">ID</th>
                   <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-6 py-3">Programa</th>
                   <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-6 py-3">Insignias</th>
+                  <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-6 py-3">Puntos</th>
                   <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wide px-6 py-3">Acciones</th>
                 </tr>
               </thead>
@@ -130,6 +234,11 @@ export default function EstudiantesList() {
                           <span className="text-xs text-slate-400">Sin insignias</span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-medium text-slate-700">
+                        {e.actividadesRealizadas?.reduce((acc, a) => acc + a.puntosObtenidos, 0) ?? 0} pts
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
